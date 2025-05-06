@@ -18,10 +18,11 @@
     "date-fns": "^3.6.0",
     "html2pdf.js": "^0.10.3",
     "jspdf": "^3.0.1",
+    "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.507.0",
-    "react": "^19.0.0",
+    "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
-    "react-dom": "^19.0.0",
+    "react-dom": "^18.3.1",
     "shadcn": "^2.5.0",
     "tailwind-merge": "^3.2.0",
     "tailwindcss": "^4.1.5"

@@ -1,20 +1,22 @@
-
-import React, { useState } from "react"
+import {useState} from "react"
 import jsPDF from "jspdf"
-import html2pdf from "html2pdf.js"
+// @ts-ignore
+import notoFont from './fonts/NotoSansJP-Black-normal.js';
+import autoTable from "jspdf-autotable"
+
 
 // shadcn/ui 的一些组件示例，具体请以你项目实际情况（版本、路径等）为准
-import { Button } from "./components/ui/button"
-import { Table, TableBody, TableCell, TableHeader, TableRow } from "./components/ui/table"
+import {Button} from "./components/ui/button"
+import {Table, TableBody, TableCell, TableHeader, TableRow} from "./components/ui/table"
 import {
   Popover,
   PopoverTrigger,
-  PopoverContent,Ø
+  PopoverContent, 
 } from "./components/ui/popover"
-import { Input } from "./components/ui/input"
-import { Calendar } from "./components/ui/calendar"
-import { CalendarIcon, PlusCircle } from "lucide-react"
-import { format, parse } from "date-fns"
+import {Input} from "./components/ui/input"
+import {Calendar} from "./components/ui/calendar"
+import {CalendarIcon, PlusCircle} from "lucide-react"
+import {format, parse} from "date-fns"
 
 // ----------------- 数据类型定义 -----------------
 interface RecordItem {
@@ -30,19 +32,19 @@ interface RecordItem {
 // label：展示给用户的文字
 // withTemp：标识该选项是否需要额外填写温度
 const SYMPTOM_OPTIONS = [
-  { key: "fever", label: "熱（最高体温　　℃）", withTemp: true },
-  { key: "鼻水", label: "鼻水", withTemp: false },
-  { key: "せき", label: "せき", withTemp: false },
-  { key: "のどの痛み", label: "のどの痛み", withTemp: false },
-  { key: "ゼイゼイする", label: "ゼイゼイする", withTemp: false },
-  { key: "耳の痛み", label: "耳の痛み", withTemp: false },
-  { key: "目やに", label: "目やに", withTemp: false },
-  { key: "頭痛", label: "頭痛", withTemp: false },
-  { key: "腹痛", label: "腹痛", withTemp: false },
-  { key: "吐き気・嘔吐", label: "吐き気・嘔吐", withTemp: false },
-  { key: "便秘", label: "便秘", withTemp: false },
-  { key: "下痢", label: "下痢", withTemp: false },
-  { key: "発疹", label: "発疹", withTemp: false },
+  {key: "fever", label: "熱（最高体温　　℃）", withTemp: true},
+  {key: "鼻水", label: "鼻水", withTemp: false},
+  {key: "せき", label: "せき", withTemp: false},
+  {key: "のどの痛み", label: "のどの痛み", withTemp: false},
+  {key: "ゼイゼイする", label: "ゼイゼイする", withTemp: false},
+  {key: "耳の痛み", label: "耳の痛み", withTemp: false},
+  {key: "目やに", label: "目やに", withTemp: false},
+  {key: "頭痛", label: "頭痛", withTemp: false},
+  {key: "腹痛", label: "腹痛", withTemp: false},
+  {key: "吐き気・嘔吐", label: "吐き気・嘔吐", withTemp: false},
+  {key: "便秘", label: "便秘", withTemp: false},
+  {key: "下痢", label: "下痢", withTemp: false},
+  {key: "発疹", label: "発疹", withTemp: false},
 ]
 
 // ----------------- 日期选择组件 -----------------
@@ -53,10 +55,10 @@ interface DatePickerInputProps {
 }
 
 function DatePickerInput({
-  dateString,
-  onChange,
-  placeholder = "请选择/输入日期",
-}: DatePickerInputProps) {
+                           dateString,
+                           onChange,
+                           placeholder = "请选择/输入日期",
+                         }: DatePickerInputProps) {
   const [open, setOpen] = useState(false)
 
   const parsedDate = dateString
@@ -105,7 +107,7 @@ interface SymptomMultiSelectProps {
   onChange: (val: string) => void
 }
 
-function SymptomMultiSelect({ value, onChange }: SymptomMultiSelectProps) {
+function SymptomMultiSelect({value, onChange}: SymptomMultiSelectProps) {
   // 父组件传进来的 symptom 用逗号切分，转换为一组选中的 key（如果存在）
   // 但实际场景中，如果希望精确回显每个选项，可在父组件中使用 JSON、数组等形式存储
   const initialValues: string[] = []
@@ -275,28 +277,44 @@ export default function RecordsPage() {
   // 这是我们转换出来的 base64 字体文件
 
   const handleGeneratePDF = () => {
-
     const doc = new jsPDF()
 
-    const fontPath1 = 'statis/NotoSansJP-Black.ttf';
-    doc.addFileToVFS('NotoSansJP-Black.ttf', doc.loadFile(fontPath1));
-    doc.addFont('NotoSansJP-Black.ttf', 'NotoSansJP-Black', 'normal');
+    // 1. 注册自定义字体（包含日文/中文）
+    doc.addFileToVFS("NotoSansJP-Black.ttf", notoFont)
+    doc.addFont("NotoSansJP-Black.ttf", "NotoSansJP-Black", "normal")
+    doc.setFont("NotoSansJP-Black", "normal") // 设置当前字体
 
-
+    // 2. 输出标题
     doc.setFontSize(14)
-    doc.text("孩子看病记录", 10, 10)
+    doc.text("こどもの通院記録（孩子看病记录）", 10, 10)
 
-    records.forEach((record, index) => {
-      const yPosition = 20 + index * 10
-      doc.text(
-        `日期: ${record.date}, 时间: ${record.time}, 症状: ${record.symptom}, 用药: ${record.medicine}`,
-        10,
-        yPosition
-      )
+    // 3. 生成表格
+    // head 代表表头，body 代表数据
+    // 需要注意的是, jsPDF 的默认坐标原点都在左上角, 如果标题文字会跟表格重叠, 可以让 autoTable 往下留一定距离
+    autoTable(doc, {
+      startY: 20, // 表格开始绘制的 y 位置，避免跟标题重叠
+      head: [["日付", "時間", "症状", "薬"]], // 表头 (日语)
+      body: records.map((record) => [
+        record.date,
+        record.time,
+        record.symptom,
+        record.medicine,
+      ]),
+      styles: {
+        font: "NotoSansJP-Black", // 指定我们注册的字体名称
+        fontStyle: "normal",      // 字体样式
+        fontSize: 12,
+      },
+      headStyles: {
+        fillColor: [220, 220, 220], // 表头背景色 (灰色)
+        textColor: 20,             // 表头文字颜色
+      },
     })
 
+    // 4. 下载生成好的 PDF
     doc.save("records.pdf")
   }
+
   return (
     <div className="p-4">
       <h1 className="text-2xl mb-4">孩子生病记录</h1>
@@ -318,7 +336,7 @@ export default function RecordsPage() {
         />
 
         {/* 症状组件：多选 + "熱"温度输入 */}
-        <SymptomMultiSelect value={symptom} onChange={setSymptom} />
+        <SymptomMultiSelect value={symptom} onChange={setSymptom}/>
 
         {/* 用药 */}
         <Input
